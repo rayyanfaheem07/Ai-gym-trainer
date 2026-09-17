@@ -1,0 +1,107 @@
+{
+  "accuracy": 1.0,
+  "precision_macro": 1.0,
+  "precision_weighted": 1.0,
+  "recall_macro": 1.0,
+  "recall_weighted": 1.0,
+  "f1_macro": 1.0,
+  "f1_weighted": 1.0,
+  "confusion_matrix": [
+    [
+      20,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      20,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      20,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      20,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      20,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      20
+    ]
+  ],
+  "classes": [
+    "bicep_curl",
+    "lunge",
+    "other",
+    "push_up",
+    "shoulder_press",
+    "squat"
+  ],
+  "per_class_metrics": {
+    "bicep_curl": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 20
+    },
+    "lunge": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 20
+    },
+    "other": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 20
+    },
+    "push_up": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 20
+    },
+    "shoulder_press": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 20
+    },
+    "squat": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 20
+    }
+  },
+  "num_test_samples": 120,
+  "classification_report_str": "                precision    recall  f1-score   support\n\n    bicep_curl       1.00      1.00      1.00        20\n         lunge       1.00      1.00      1.00        20\n         other       1.00      1.00      1.00        20\n       push_up       1.00      1.00      1.00        20\nshoulder_press       1.00      1.00      1.00        20\n         squat       1.00      1.00      1.00        20\n\n      accuracy                           1.00       120\n     macro avg       1.00      1.00      1.00       120\n  weighted avg       1.00      1.00      1.00       120\n"
+}

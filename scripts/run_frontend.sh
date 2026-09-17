@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+echo "Starting Next.js Frontend Dev Server on http://localhost:3000 ..."
+cd frontend && npm run dev

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-gym-trainer"
+version = "0.1.0"
+description = "AI Gym Trainer - Real-Time Computer Vision & Biomechanics Engine"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [
+    ".venv",
+    ".git",
+    "node_modules",
+    ".next",
+    "dist",
+    "build",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --tb=short"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = [".", "backend", "ai"]
