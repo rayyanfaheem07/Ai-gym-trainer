@@ -52,11 +52,18 @@ class Settings(BaseSettings):
     # AI & LLM Engine (Ollama)
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.2"
+    OLLAMA_TIMEOUT_SECONDS: float = 30.0
 
     # Computer Vision & Pose Settings
     POSE_DETECTION_CONFIDENCE: float = 0.7
     POSE_TRACKING_CONFIDENCE: float = 0.7
     ENABLE_ONE_EURO_FILTER: bool = True
+
+    # Performance & Streaming Settings (Phase 15)
+    REALTIME_PROCESSING_FPS: int = 30
+    FRAME_MAX_WIDTH: int = 1280
+    FRAME_MAX_HEIGHT: int = 720
+    WEBSOCKET_MAX_MESSAGE_SIZE: int = 1_048_576
 
 
 settings = Settings()

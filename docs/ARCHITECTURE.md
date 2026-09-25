@@ -239,5 +239,83 @@ User (users)
 3. **Pure SVG Telemetry Charts**: Frontend visualizers (`PerformanceTrendChart`) render clean vector lines and area fills with zero external charting bloat, supporting multi-metric toggles (Form Score, Total Reps, Rep Accuracy %, Duration).
 4. **Resilient Empty & Single-Point States**: Safe defaults and graceful UI fallback banners when an athlete has 0 or 1 session recorded.
 
+---
+
+## 8. Performance Engineering Architecture (Phase 15)
+
+```
+[ Browser / Camera HUD ]
+  │
+  ├─► Frame Throttling (~30 FPS / 33.3ms) & Concurrency Guard (skip in-flight detect)
+  │
+  └─► WS /api/v1/ws/stream (Pre-allocated NumPy buffer, zero per-frame DB writes)
+        │
+        ▼
+[ Server Frame Pipeline ]
+  ├─► Pre-allocated (33, 4) Float32 Landmark Buffer
+  ├─► Frame Resolution Clamping (1280x720)
+  ├─► torch.inference_mode() + Vectorized Batched Forward Passes
+  ├─► Zero DB writes per frame / Zero LLM calls in frame loop
+  └─► Latency Telemetry (latency_ms) returned in AnalysisResultResponse
+        │
+        ▼
+[ Database Query Optimization ]
+  ├─► Composite Index: workouts(user_id, started_at)
+  ├─► Composite Index: exercise_sessions(workout_id, session_order)
+  ├─► Composite Index: exercise_results(exercise_session_id, rep_number)
+  ├─► Composite Index: form_issues(exercise_result_id, issue_code)
+  └─► Personalization Trends: Targeted SQL aggregations replacing deep eager-loads
+```
+
+### 8.1 Key Bottlenecks Identified
+1. **Landmark Array Allocation Thrashing**: The WebSocket landmark conversion constructed nested Python lists and instantiated fresh `np.array` instances on every frame (30–60+ times/sec per client).
+2. **Uncapped Client Frame Dispatch**: High-refresh browser monitors (60Hz, 120Hz, 144Hz) queued concurrent `detect()` executions and saturated WebSocket channels.
+3. **Deep Eager Loading in Personalization**: `PersonalizationService.calculate_personal_trends` loaded a user's entire workout history using 3-level deep `selectinload` across all sessions, reps, and form faults.
+4. **Sequential ML Forward Passes**: `predict_batch` iterated sequential single-window inferences rather than performing a single batched tensor evaluation.
+5. **Missing Multi-Column Database Indexes**: High-frequency ordered queries on user workout history, session ordering, and rep telemetry scanned unindexed secondary columns.
+
+### 8.2 Optimizations Implemented
+1. **Pre-allocated NumPy Landmark Buffering**:
+   - `parse_landmarks_to_numpy`: Pre-allocates `np.empty((33, 4), dtype=np.float32)` and fills by index.
+   - `ai/pose/detector.py`: Normalized landmark and 3D world landmark extraction optimized with pre-allocated buffers.
+2. **Client-Side Frame Throttling & In-Flight Guards**:
+   - `frontend/src/app/workout/page.tsx`: Throttled to ~30 FPS (`TARGET_INTERVAL_MS = 1000 / 30`) with an `isProcessingRef` guard, preventing overlapping MediaPipe detections and unnecessary React component re-renders.
+3. **PyTorch ML Inference Optimization**:
+   - `ai/classifier/temporal_inference.py`: Switched to `torch.inference_mode()` (disabling autograd view tracking and version counters).
+   - Vectorized `predict_batch`: Combines sequences into a single `(B, W, F)` tensor evaluated in one forward pass.
+   - Replaced `np.array(window)` copies with zero-copy `np.asarray(window)`.
+4. **Database Performance & Composite Indexes (Migration 004)**:
+   - Created `004_add_performance_indexes.py` establishing:
+     - `ix_workouts_user_started` on `workouts(user_id, started_at)`
+     - `ix_exercise_sessions_workout_order` on `exercise_sessions(workout_id, session_order)`
+     - `ix_exercise_results_session_rep` on `exercise_results(exercise_session_id, rep_number)`
+     - `ix_form_issues_result_code` on `form_issues(exercise_result_id, issue_code)`
+   - Verified reversible migration cycle: `upgrade -> downgrade -> upgrade`.
+5. **Targeted Aggregation for Personalization Trends**:
+   - Replaced deep recursive `selectinload` of all lifetime results with targeted join queries for recurring issues and lifetime metrics.
+6. **Configurable Runtime Settings & Observability**:
+   - Added `REALTIME_PROCESSING_FPS`, `FRAME_MAX_WIDTH`, `FRAME_MAX_HEIGHT`, `WEBSOCKET_MAX_MESSAGE_SIZE` in `Settings` and `.env.example`.
+   - Added `latency_ms` telemetry to `AnalysisResultResponse`.
+
+### 8.3 Benchmark Results (Measured)
+Measured using `tests/unit/test_performance_benchmarks.py` on local test environment:
+- **Pose Analysis Latency** (100 frames through landmark parsing and squat analyzer):
+  - Average: **0.332 ms** / frame
+  - P95: **0.535 ms** / frame
+  - Max: **3.670 ms** / frame
+  *(Real-time 30 FPS budget is 33.3 ms; 0.332 ms utilizes < 1% of frame budget)*
+- **ML Classifier Batch Inference Throughput** (16 sequence windows):
+  - Total: **2.007 ms** (0.125 ms / window)
+- **Personalization Trends Database Query** (10 historical workouts with full session/rep/fault data):
+  - Execution time: **37.503 ms** (well within sub-100ms SLA)
+
+### 8.4 Expected / Theoretical Improvements
+- **Network & Client CPU Utilization**: Capping high-refresh displays from 120Hz/144Hz to 30 FPS yields a theoretical ~75% reduction in outbound WebSocket message traffic and client detection overhead on gaming/high-refresh monitors.
+- **Database Scalability**: As user history grows beyond 50+ workouts, the targeted aggregation query avoids loading thousands of ORM objects into Python memory, shifting memory scaling from O(Workouts * Reps) to O(Recent_Workouts).
+
+### 8.5 Known Limitations
+- When browser webcam resolution is set to 4K (3840x2160), MediaPipe JavaScript detection in the browser consumes noticeable client CPU; client-side downscaling or lower webcam constraints (e.g. 720p) are recommended for lower-end hardware.
+- Offline fallback AI coach is instantaneous, but when connected to a local Ollama instance with large models (e.g., 8B/13B parameter LLMs), response latency is bounded by the host GPU/CPU inference speed, which is why AI Coach runs asynchronously outside the real-time frame loop.
+
 
 

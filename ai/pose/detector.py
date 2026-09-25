@@ -13,6 +13,11 @@ from ai.pose.filters import OneEuroFilter
 from ai.pose.landmarks import PoseDetectionResult
 from ai.pose.normalizer import normalize_pose_landmarks
 
+try:
+    from backend.app.core.config import settings
+except ImportError:
+    settings = None
+
 logger = logging.getLogger(__name__)
 
 # Default model download URL and local path
@@ -34,6 +39,7 @@ def ensure_model_asset(model_path: str = DEFAULT_MODEL_PATH, model_url: str = DE
 def extract_landmarks_array(landmarker_result) -> np.ndarray | None:
     """
     Unit-testable helper to extract normalized (33, 4) landmark array from MediaPipe PoseLandmarkerResult.
+    Pre-allocates an exact (33, 4) float32 buffer to prevent heap fragmentation.
 
     Returns:
         np.ndarray of shape (33, 4) [x, y, z, visibility] or None if no landmarks detected.
@@ -47,10 +53,13 @@ def extract_landmarks_array(landmarker_result) -> np.ndarray | None:
     if len(first_person) < 33:
         return None
 
-    arr = np.array(
-        [[lm.x, lm.y, lm.z, getattr(lm, "visibility", 1.0) or 1.0] for lm in first_person],
-        dtype=np.float32,
-    )
+    arr = np.empty((33, 4), dtype=np.float32)
+    for i in range(33):
+        lm = first_person[i]
+        arr[i, 0] = lm.x
+        arr[i, 1] = lm.y
+        arr[i, 2] = lm.z
+        arr[i, 3] = getattr(lm, "visibility", 1.0) or 1.0
     return arr
 
 
@@ -67,10 +76,13 @@ def extract_world_landmarks_array(landmarker_result) -> np.ndarray | None:
     if len(first_person) < 33:
         return None
 
-    arr = np.array(
-        [[lm.x, lm.y, lm.z, getattr(lm, "visibility", 1.0) or 1.0] for lm in first_person],
-        dtype=np.float32,
-    )
+    arr = np.empty((33, 4), dtype=np.float32)
+    for i in range(33):
+        lm = first_person[i]
+        arr[i, 0] = lm.x
+        arr[i, 1] = lm.y
+        arr[i, 2] = lm.z
+        arr[i, 3] = getattr(lm, "visibility", 1.0) or 1.0
     return arr
 
 
@@ -128,6 +140,15 @@ class PoseDetector:
         """
         if frame_bgr is None or frame_bgr.size == 0:
             return PoseDetectionResult(has_detection=False)
+
+        # Performance optimization: bound frame resolution if exceeding max dimensions
+        max_w = getattr(settings, "FRAME_MAX_WIDTH", 1280) if settings else 1280
+        max_h = getattr(settings, "FRAME_MAX_HEIGHT", 720) if settings else 720
+        h, w = frame_bgr.shape[:2]
+        if w > max_w or h > max_h:
+            scale = min(max_w / w, max_h / h)
+            new_w, new_h = int(w * scale), int(h * scale)
+            frame_bgr = cv2.resize(frame_bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
         # Convert OpenCV BGR to RGB
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)

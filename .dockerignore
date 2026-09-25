@@ -1,0 +1,53 @@
+# Version control
+.git
+.gitignore
+
+# Python virtual environments & bytecode caches
+.venv
+venv
+ENV/
+env/
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov/
+*.coverage.*
+
+# Node / Next.js artifacts and caches
+**/node_modules
+**/.next
+**/.turbo
+frontend/.next
+frontend/node_modules
+
+# Environment and sensitive secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# SQLite local databases
+*.db
+*.sqlite3
+ai_gym.db
+
+# Heavy datasets and raw video records
+data/raw
+data/processed
+data/recordings
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test reports
+reports/

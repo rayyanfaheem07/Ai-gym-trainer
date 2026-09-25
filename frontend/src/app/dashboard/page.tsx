@@ -6,10 +6,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { AnalyticsOverviewCards } from "@/components/analytics/AnalyticsOverviewCards";
 import { PerformanceTrendChart } from "@/components/analytics/PerformanceTrendChart";
 import { ExerciseBreakdownCard } from "@/components/analytics/ExerciseBreakdownCard";
+import { PersonalizationCard } from "@/components/dashboard/PersonalizationCard";
 import { ExerciseCatalog } from "@/components/dashboard/ExerciseCatalog";
 import { WorkoutHistory } from "@/components/dashboard/WorkoutHistory";
-import { AnalyticsSummary, AnalyticsTrends } from "@/types";
-import { analyticsApi } from "@/lib/api";
+import { AnalyticsSummary, AnalyticsTrends, UserProfile } from "@/types";
+import { analyticsApi, profileApi } from "@/lib/api";
 import { Dumbbell, Activity, Play, ArrowRight, Loader2, Sparkles } from "lucide-react";
 
 export default function DashboardPage() {
@@ -17,29 +18,33 @@ export default function DashboardPage() {
 
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [trends, setTrends] = useState<AnalyticsTrends | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("30d");
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    async function fetchAnalytics() {
+    async function fetchDashboardData() {
       try {
         setLoadingAnalytics(true);
-        const [sumRes, trendRes] = await Promise.all([
+        const [sumRes, trendRes, profRes] = await Promise.allSettled([
           analyticsApi.getSummary(),
           analyticsApi.getTrends(selectedPeriod),
+          profileApi.get(),
         ]);
-        setSummary(sumRes);
-        setTrends(trendRes);
+
+        if (sumRes.status === "fulfilled") setSummary(sumRes.value);
+        if (trendRes.status === "fulfilled") setTrends(trendRes.value);
+        if (profRes.status === "fulfilled") setProfile(profRes.value);
       } catch (err) {
-        console.warn("Could not fetch analytics summary:", err);
+        console.warn("Could not fetch analytics or profile data:", err);
       } finally {
         setLoadingAnalytics(false);
       }
     }
 
-    fetchAnalytics();
+    fetchDashboardData();
   }, [isAuthenticated, selectedPeriod]);
 
   if (authLoading) {
@@ -81,6 +86,9 @@ export default function DashboardPage() {
           <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
+
+      {/* Athlete Personalization Profile Card */}
+      {profile && <PersonalizationCard profile={profile} isLoading={loadingAnalytics && !profile} />}
 
       {/* Analytics Summary Overview Cards */}
       <AnalyticsOverviewCards summary={summary} isLoading={loadingAnalytics && !summary} />

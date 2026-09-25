@@ -111,6 +111,7 @@ class AnalysisResultResponse(BaseModel):
     audio_cue: str | None = None
     rep_duration_sec: float = 0.0
     metrics: dict[str, Any] = Field(default_factory=dict)
+    latency_ms: float | None = None
 
 
 class SessionStartedResponse(BaseModel):

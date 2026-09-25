@@ -32,6 +32,9 @@ const EXERCISES: { id: ExerciseType; name: string; target: string }[] = [
   { id: "shoulder_press", name: "Shoulder Press", target: "Deltoids & Upper Traps" },
 ];
 
+// Frame interval cap for smooth real-time tracking at ~30 FPS (33.3ms)
+const TARGET_INTERVAL_MS = 1000 / 30;
+
 function WorkoutArena() {
   const searchParams = useSearchParams();
   const initialExercise = (searchParams?.get("exercise") as ExerciseType) || "squat";
@@ -52,6 +55,8 @@ function WorkoutArena() {
   const poseDetectorRef = useRef<BrowserPoseDetector | null>(null);
   const frameAnimationRef = useRef<number | null>(null);
   const isTrainingRef = useRef<boolean>(false);
+  const isProcessingRef = useRef<boolean>(false);
+  const lastFrameTimeRef = useRef<number>(0);
   isTrainingRef.current = isTrainingActive;
 
   // Real-time WebSocket hook
@@ -130,15 +135,28 @@ function WorkoutArena() {
     }
   }, [isTrainingActive, wsStatus, selectedExercise, activeWorkoutId, startSession]);
 
-  // Frame Capture & Pose Landmark Streaming Loop
+  // Frame Capture & Pose Landmark Streaming Loop (capped at ~30 FPS with in-flight guard)
   const runFrameLoop = useCallback(async () => {
     if (!isTrainingRef.current) return;
 
-    if (videoRef.current && videoRef.current.readyState >= 2 && poseDetectorRef.current) {
-      const landmarks = await poseDetectorRef.current.detect(videoRef.current);
-      if (landmarks && landmarks.length >= 33) {
-        setCurrentLandmarks(landmarks);
-        sendPoseFrame(landmarks, selectedExercise);
+    const now = performance.now();
+    const elapsed = now - lastFrameTimeRef.current;
+
+    if (elapsed >= TARGET_INTERVAL_MS && !isProcessingRef.current) {
+      if (videoRef.current && videoRef.current.readyState >= 2 && poseDetectorRef.current) {
+        isProcessingRef.current = true;
+        try {
+          const landmarks = await poseDetectorRef.current.detect(videoRef.current);
+          if (landmarks && landmarks.length >= 33 && isTrainingRef.current) {
+            setCurrentLandmarks(landmarks);
+            sendPoseFrame(landmarks, selectedExercise);
+          }
+          lastFrameTimeRef.current = now;
+        } catch (err) {
+          console.warn("Pose detection error during frame loop:", err);
+        } finally {
+          isProcessingRef.current = false;
+        }
       }
     }
 
@@ -156,12 +174,15 @@ function WorkoutArena() {
         cancelAnimationFrame(frameAnimationRef.current);
         frameAnimationRef.current = null;
       }
+      isProcessingRef.current = false;
     };
   }, [isTrainingActive, wsStatus, runFrameLoop]);
 
   // Stop Training Routine
   const handleStopWorkout = async () => {
     setIsTrainingActive(false);
+    isTrainingRef.current = false;
+    isProcessingRef.current = false;
 
     if (frameAnimationRef.current) {
       cancelAnimationFrame(frameAnimationRef.current);

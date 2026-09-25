@@ -1,5 +1,7 @@
 # Real-Time AI Gym Trainer
 
+[![CI Quality Gates](https://github.com/rayyanfaheem07/Ai-gym-trainer/actions/workflows/ci.yml/badge.svg)](https://github.com/rayyanfaheem07/Ai-gym-trainer/actions/workflows/ci.yml)
+
 A real-time AI-powered computer vision fitness coach and telemetry platform. It features MediaPipe Pose 3D body landmark extraction, temporal PyTorch deep learning exercise recognition, a deterministic Finite State Machine (FSM) for rep counting, a secure multi-tenant FastAPI backend with JWT authentication and PostgreSQL/Alembic storage, an offline local Large Language Model (via Ollama) for personalized coaching, and a modern Next.js 15 App Router web application with real-time HUD telemetry.
 
 ---
@@ -71,6 +73,23 @@ A real-time AI-powered computer vision fitness coach and telemetry platform. It 
 - **Performance Progression Charts**: `/api/v1/analytics/trends` and pure SVG `PerformanceTrendChart` visualizes multi-metric trajectories over 7, 14, 30, or 90 days.
 - **Paginated Workout History**: `/history` page with server-side pagination, exercise filtering, and date range query parameters.
 - **Workout Inspection Modal**: Deep-dive into completed sessions with rep-by-rep breakdowns, form score gauges, and fault summaries.
+
+---
+
+## AI Movement Coach (Phase 13)
+
+- **Backend as Source of Truth**: The AI Coach does **not** determine or calculate workout statistics. Numerical metrics (repetitions, validity counts, form scores, durations, and biomechanical faults) are extracted strictly from persisted database records into a bounded `CoachContext`. The LLM receives fact-checked telemetry and is constrained from inventing numbers.
+- **Provider Abstraction Architecture**:
+  - `BaseCoachProvider`: Abstract interface defining `generate_coaching(context: CoachContext) -> CoachStructuredOutput`.
+  - `OllamaCoachProvider`: Async `httpx` client connecting to local Ollama (`llama3.2`) with system prompt guardrails, strict JSON formatting, and timeout resilience (`OLLAMA_TIMEOUT_SECONDS=30.0`).
+  - `DeterministicFallbackCoachProvider`: Offline rule-based engine providing actionable form corrections and focus cues directly from recorded faults when Ollama is offline.
+- **Graceful Offline Fallback**: If local Ollama is offline, unreachable, or times out, the API immediately engages the deterministic fallback provider and returns valid coaching insights flagged with `is_fallback: True`, ensuring the application and UI remain 100% operational.
+- **Strict User Isolation**: All coaching endpoints verify JWT Bearer tokens and enforce that users can only request coaching on their own workout sessions.
+- **REST Endpoints**:
+  - `POST /api/v1/coach/session/{session_id}`: Evaluates an owned session using path parameter.
+  - `POST /api/v1/coach/evaluate`: Evaluates session via JSON body (`{"session_id": "...", "target_focus": "..."}`).
+  - `GET /api/v1/coach/session/{session_id}`: Retrieves existing coaching feedback.
+- **Next.js AI Coaching UI**: `CoachFeedbackCard` component with visual model/fallback badges, executive summaries, bulleted strengths, targeted form improvements, next-session focus cues, and biomechanical safety notes.
 
 
 ---
@@ -179,3 +198,74 @@ npm run lint
 # Frontend production build
 npm run build
 ```
+
+---
+
+## Docker & Production Containerization (Phase 17)
+
+The application is fully containerized and orchestrated via Docker Compose, supporting zero-downtime persistent storage, automated database migrations, real-time WebSocket streaming, and health check monitoring.
+
+### 1. Build & Run with Docker Compose
+```bash
+# Build multi-stage production images
+docker compose build
+
+# Start services in background (PostgreSQL, Backend, Frontend, Ollama)
+docker compose up -d
+
+# Verify all containers are healthy
+docker compose ps
+```
+
+Services are exposed as:
+- **Next.js Web App**: `http://localhost:3000`
+- **FastAPI Backend & Swagger**: `http://localhost:8000/docs`
+- **Health Check Endpoint**: `http://localhost:8000/health`
+- **WebSocket Streaming**: `ws://localhost:8000/api/v1/ws/stream`
+
+### 2. Database Migrations & Administration
+Database migrations execute automatically on container startup when `RUN_MIGRATIONS=true`.
+```bash
+# Check current migration revision
+docker exec ai_gym_backend alembic current
+
+# Upgrade to latest revision
+docker exec ai_gym_backend alembic upgrade head
+```
+
+### 3. Graceful Shutdown & Teardown
+```bash
+# Stop containers (preserves database data)
+docker compose stop
+
+# Restart stopped containers
+docker compose start
+
+# Remove containers and network
+docker compose down
+```
+
+For full details regarding security, image minimization, and failure modes, see [`docs/DOCKER.md`](docs/DOCKER.md).
+ 
+---
+
+## Continuous Integration & Quality Gates (Phase 18)
+
+Every push and pull request is validated by automated GitHub Actions CI quality gates (`.github/workflows/ci.yml`):
+
+- **Security & Secret Hygiene**: Scans for accidental secret leaks, unencrypted private keys, and verifies that `.env` files are not tracked in Git.
+- **Backend Quality**: Executes `ruff check .`, runs the 280-test Pytest suite, and enforces a **>= 80%** test coverage threshold across the backend and AI engine.
+- **Alembic Migrations**: Validates full forward and reverse schema migrations (`upgrade head` -> `downgrade -1` -> `upgrade head`) against a clean PostgreSQL 15 container.
+- **Frontend Quality**: Runs clean `npm ci`, runs 33 Next.js tests, verifies TypeScript static types (`tsc --noEmit`), lints code (`npm run lint`), and builds the standalone production bundle (`npm run build`).
+- **Docker Compose Integrity**: Validates Compose configuration syntax and builds production images.
+
+### Local Reproduction
+Developers can run all CI quality gates locally before pushing changes:
+```bash
+# Cross-platform Python runner:
+python scripts/run_ci_checks.py
+
+# Windows PowerShell runner:
+.\scripts\run_ci_checks.ps1
+```
+For complete pipeline specifications, see [`docs/CI_CD.md`](docs/CI_CD.md).

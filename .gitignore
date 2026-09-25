@@ -41,7 +41,9 @@ venv.bak/
 # Testing & Coverage
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
+reports/
 .tox/
 .nox/
 .hypothesis/
@@ -57,6 +59,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 .turbo/
+*.tsbuildinfo
 
 # IDE & OS
 .vscode/

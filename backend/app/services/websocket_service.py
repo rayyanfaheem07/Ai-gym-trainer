@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 from ai.exercises.base import BaseExerciseAnalyzer, ExerciseAnalysisResult
 from ai.exercises.registry import ExerciseRegistry
+from backend.app.core.config import settings
 from backend.app.core.database import AsyncSessionLocal
 from backend.app.core.errors import AuthenticationError
 from backend.app.core.security import decode_access_token
@@ -34,8 +35,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-# Max incoming message payload size in characters (1 MB)
-MAX_WS_MESSAGE_SIZE = 1_048_576
+# Max incoming message payload size in characters (configurable)
+MAX_WS_MESSAGE_SIZE = getattr(settings, "WEBSOCKET_MAX_MESSAGE_SIZE", 1_048_576)
 
 
 def normalize_exercise_name(exercise_name: str | None) -> str:
@@ -61,6 +62,7 @@ def normalize_exercise_name(exercise_name: str | None) -> str:
 def parse_landmarks_to_numpy(raw_landmarks: Any) -> np.ndarray | None:
     """
     Safely converts landmark lists / dicts to a standardized (33, 4) NumPy array.
+    Pre-allocates an exact (33, 4) float32 buffer to minimize heap allocations.
     Returns None if payload is malformed or contains fewer than 33 landmarks.
     """
     if not raw_landmarks or not isinstance(raw_landmarks, list):
@@ -69,25 +71,25 @@ def parse_landmarks_to_numpy(raw_landmarks: Any) -> np.ndarray | None:
         return None
 
     try:
-        arr = []
-        for lm in raw_landmarks[:33]:
+        arr = np.empty((33, 4), dtype=np.float32)
+        for i in range(33):
+            lm = raw_landmarks[i]
             if isinstance(lm, dict):
-                x = float(lm.get("x", 0.0))
-                y = float(lm.get("y", 0.0))
-                z = float(lm.get("z", 0.0))
-                vis = float(lm.get("visibility", 1.0))
+                arr[i, 0] = float(lm.get("x", 0.0))
+                arr[i, 1] = float(lm.get("y", 0.0))
+                arr[i, 2] = float(lm.get("z", 0.0))
+                arr[i, 3] = float(lm.get("visibility", 1.0))
             elif isinstance(lm, (list, tuple)):
-                x = float(lm[0]) if len(lm) > 0 else 0.0
-                y = float(lm[1]) if len(lm) > 1 else 0.0
-                z = float(lm[2]) if len(lm) > 2 else 0.0
-                vis = float(lm[3]) if len(lm) > 3 else 1.0
+                arr[i, 0] = float(lm[0]) if len(lm) > 0 else 0.0
+                arr[i, 1] = float(lm[1]) if len(lm) > 1 else 0.0
+                arr[i, 2] = float(lm[2]) if len(lm) > 2 else 0.0
+                arr[i, 3] = float(lm[3]) if len(lm) > 3 else 1.0
             else:
-                x = float(getattr(lm, "x", 0.0))
-                y = float(getattr(lm, "y", 0.0))
-                z = float(getattr(lm, "z", 0.0))
-                vis = float(getattr(lm, "visibility", 1.0))
-            arr.append([x, y, z, vis])
-        return np.array(arr, dtype=np.float32)
+                arr[i, 0] = float(getattr(lm, "x", 0.0))
+                arr[i, 1] = float(getattr(lm, "y", 0.0))
+                arr[i, 2] = float(getattr(lm, "z", 0.0))
+                arr[i, 3] = float(getattr(lm, "visibility", 1.0))
+        return arr
     except Exception as e:
         logger.warning(f"Failed parsing landmarks to numpy: {e}")
         return None
@@ -156,6 +158,7 @@ class WebSocketSessionTracker:
         self,
         landmarks_np: np.ndarray | None,
         timestamp_ms: float,
+        latency_ms: float | None = None,
     ) -> AnalysisResultResponse:
         """
         Processes a single frame entirely in memory using the exercise analyzer.
@@ -260,6 +263,7 @@ class WebSocketSessionTracker:
             audio_cue=audio_cue,
             rep_duration_sec=result.rep_duration_sec,
             metrics=result.metrics,
+            latency_ms=latency_ms,
         )
 
     async def stop_session(
@@ -555,6 +559,8 @@ class WebSocketService:
 
         # Pose Frame / Real-time Telemetry (default if type is pose_frame or landmarks are provided)
         if msg_type == WSClientMessageType.POSE_FRAME.value or "landmarks" in payload or msg_type is None:
+            t_frame_start = time.perf_counter()
+
             # Exercise override if specified
             override_ex = payload.get("exercise_override") or payload.get("exercise")
             if override_ex and normalize_exercise_name(override_ex) != tracker.exercise_name:
@@ -567,8 +573,13 @@ class WebSocketService:
             raw_landmarks = payload.get("landmarks")
             landmarks_np = parse_landmarks_to_numpy(raw_landmarks)
 
+            # Measure frame processing latency
+            frame_latency = round((time.perf_counter() - t_frame_start) * 1000.0, 3)
+
             # Process frame through in-memory analyzer
-            analysis_result = tracker.process_frame(landmarks_np, timestamp_ms=timestamp_ms)
+            analysis_result = tracker.process_frame(
+                landmarks_np, timestamp_ms=timestamp_ms, latency_ms=frame_latency
+            )
             await websocket.send_text(analysis_result.model_dump_json())
             return
 

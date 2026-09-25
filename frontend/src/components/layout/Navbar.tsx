@@ -14,6 +14,7 @@ export const Navbar: React.FC = () => {
     { href: "/workout", label: "Live Workout", icon: Dumbbell },
     { href: "/dashboard", label: "Dashboard", icon: Activity, authOnly: true },
     { href: "/history", label: "History & AI Coach", icon: Activity, authOnly: true },
+    { href: "/profile", label: "Personalization", icon: UserIcon, authOnly: true },
   ];
 
   return (
@@ -56,11 +57,15 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center gap-3">
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800/60 border border-gray-700/60 text-xs text-gray-300">
+              <Link
+                href="/profile"
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800/60 hover:bg-gray-800 border border-gray-700/60 hover:border-gray-600 text-xs text-gray-300 hover:text-white transition-all"
+                title="View Personalization Profile"
+              >
                 <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                 <UserIcon className="w-3.5 h-3.5 text-gray-400" />
                 <span className="max-w-[140px] truncate">{user.full_name || user.email}</span>
-              </div>
+              </Link>
               <button
                 onClick={logout}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-800/80 hover:bg-rose-950/40 text-gray-300 hover:text-rose-400 border border-gray-700/80 hover:border-rose-900/60 transition-all"

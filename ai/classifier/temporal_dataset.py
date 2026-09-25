@@ -13,7 +13,7 @@ logger = logging.getLogger("TemporalDataset")
 class PoseSequenceDataset(Dataset):
     """
     PyTorch Dataset for temporal sequence classification of pose features.
-    
+
     Yields:
         x: torch.FloatTensor of shape (sequence_length, feature_dimension)
         y: torch.LongTensor (scalar class label) if targets are provided, else x only

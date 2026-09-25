@@ -6,6 +6,7 @@ import numpy as np
 
 from ai.classifier.inference import CANONICAL_EXERCISES, ExerciseInferenceEngine
 from ai.classifier.pipeline import ExerciseClassificationPipeline
+
 try:
     from ai.classifier.temporal_inference import TemporalExerciseInferenceEngine
     from ai.classifier.temporal_pipeline import TemporalClassificationPipeline

@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -48,6 +49,9 @@ class Workout(Base, TimestampMixin):
     Primary workout model representing an entire user workout session.
     """
     __tablename__ = "workouts"
+    __table_args__ = (
+        Index("ix_workouts_user_started", "user_id", "started_at"),
+    )
 
     user_id = Column(
         String(36),
@@ -101,6 +105,9 @@ class ExerciseSession(Base, TimestampMixin):
     Represents a specific exercise performance (or set) within a workout.
     """
     __tablename__ = "exercise_sessions"
+    __table_args__ = (
+        Index("ix_exercise_sessions_workout_order", "workout_id", "session_order"),
+    )
 
     workout_id = Column(
         String(36),
@@ -150,6 +157,9 @@ class ExerciseResult(Base, TimestampMixin):
     Represents an individual rep execution result with biomechanical data.
     """
     __tablename__ = "exercise_results"
+    __table_args__ = (
+        Index("ix_exercise_results_session_rep", "exercise_session_id", "rep_number"),
+    )
 
     exercise_session_id = Column(
         String(36),
@@ -181,6 +191,9 @@ class FormIssue(Base, TimestampMixin):
     Fine-grained form error or biomechanical deviation detected during a rep.
     """
     __tablename__ = "form_issues"
+    __table_args__ = (
+        Index("ix_form_issues_result_code", "exercise_result_id", "issue_code"),
+    )
 
     exercise_result_id = Column(
         String(36),

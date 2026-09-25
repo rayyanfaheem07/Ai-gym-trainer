@@ -88,7 +88,7 @@ class TemporalExerciseInferenceEngine:
                 "probabilities": prob_dict,
             }
 
-        window_arr = np.array(window)
+        window_arr = np.asarray(window)
 
         # 1. Feature Transformation & Scaling
         if window_arr.ndim == 3 and window_arr.shape[1] == 33:
@@ -105,9 +105,10 @@ class TemporalExerciseInferenceEngine:
             # Fallback to transform_sequence_window
             x_scaled = self.pipeline.preprocessor.transform_sequence_window(window_arr)
 
-        # 2. PyTorch Model Forward Pass
+        # 2. PyTorch Model Forward Pass (using torch.inference_mode for reduced overhead)
         tensor_x = torch.from_numpy(x_scaled).to(self.device)
-        with torch.no_grad():
+        inference_ctx = torch.inference_mode if hasattr(torch, "inference_mode") else torch.no_grad
+        with inference_ctx():
             probs_tensor = self.pipeline.model.predict_proba(tensor_x)
             raw_probs = probs_tensor[0].cpu().numpy()
 
@@ -151,8 +152,75 @@ class TemporalExerciseInferenceEngine:
         self,
         windows: Union[List[np.ndarray], np.ndarray],
     ) -> List[Dict[str, Any]]:
-        """Batched inference for evaluating or processing multiple windows efficiently."""
-        return [self.predict_sequence(w) for w in windows]
+        """
+        Batched inference for evaluating or processing multiple windows efficiently.
+        Performs a single vectorized model forward pass across all windows when possible.
+        """
+        if not windows or len(windows) == 0:
+            return []
+
+        if not self.is_ready():
+            return [self.predict_sequence(w) for w in windows]
+
+        try:
+            scaled_list = []
+            for w in windows:
+                w_arr = np.asarray(w)
+                if w_arr.ndim == 3 and w_arr.shape[1] == 33:
+                    x_s = self.pipeline.preprocessor.transform_sequence_window(w_arr)
+                elif w_arr.ndim == 2 and w_arr.shape[1] == self.pipeline.model.input_size:
+                    scaled_seq = self.pipeline.preprocessor.scaler.transform(w_arr).astype(np.float32)
+                    x_s = np.expand_dims(scaled_seq, axis=0)
+                elif w_arr.ndim == 3 and w_arr.shape[2] == self.pipeline.model.input_size:
+                    x_s = w_arr.astype(np.float32)
+                else:
+                    x_s = self.pipeline.preprocessor.transform_sequence_window(w_arr)
+                scaled_list.append(x_s)
+
+            batch_x = np.concatenate(scaled_list, axis=0)
+            tensor_batch = torch.from_numpy(batch_x).to(self.device)
+
+            inference_ctx = torch.inference_mode if hasattr(torch, "inference_mode") else torch.no_grad
+            with inference_ctx():
+                probs_tensor = self.pipeline.model.predict_proba(tensor_batch)
+                batch_probs = probs_tensor.cpu().numpy()
+
+            model_classes = self.pipeline.classes
+            results = []
+            for raw_probs in batch_probs:
+                prob_dict = {name: 0.0 for name in CANONICAL_EXERCISES}
+                top_idx = int(np.argmax(raw_probs))
+                top_prob = float(raw_probs[top_idx])
+                predicted_raw_class = model_classes[top_idx] if top_idx < len(model_classes) else self.unknown_label
+
+                for cls_name, p in zip(model_classes, raw_probs):
+                    canon_name = self._canonicalize_name(cls_name)
+                    prob_dict[canon_name] = round(float(p), 4)
+
+                for key in CANONICAL_EXERCISES:
+                    if key not in prob_dict:
+                        prob_dict[key] = 0.0
+
+                total_p = sum(prob_dict.values())
+                if total_p > 0:
+                    for k in prob_dict:
+                        prob_dict[k] = round(prob_dict[k] / total_p, 4)
+
+                canonical_top = self._canonicalize_name(predicted_raw_class)
+                if top_prob < self.confidence_threshold:
+                    final_exercise = self.unknown_label
+                else:
+                    final_exercise = canonical_top
+
+                results.append({
+                    "exercise": final_exercise,
+                    "confidence": round(top_prob, 4),
+                    "probabilities": prob_dict,
+                })
+            return results
+        except Exception as e:
+            logger.warning(f"Batch prediction falling back to sequential execution: {e}")
+            return [self.predict_sequence(w) for w in windows]
 
     @staticmethod
     def _canonicalize_name(name: str) -> str:

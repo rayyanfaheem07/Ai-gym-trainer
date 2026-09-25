@@ -58,6 +58,9 @@ export interface CoachingFeedback {
   strengths: string[];
   areas_to_improve: string[];
   recovery_advice?: string;
+  next_session_focus?: string;
+  safety_note?: string;
+  is_fallback?: boolean;
   created_at?: string;
 }
 

@@ -32,9 +32,35 @@ ignore = [
     "E501",  # line too long (handled by formatter)
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["E402"]
+
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra -q --tb=short"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 pythonpath = [".", "backend", "ai"]
+
+[tool.coverage.run]
+source = ["backend/app", "ai"]
+branch = false
+omit = [
+    "tests/*",
+    "scripts/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass",
+    "except ImportError:",
+]
+
