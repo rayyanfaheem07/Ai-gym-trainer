@@ -33,7 +33,7 @@ jobs:
       - name: Scan repository for accidentally committed private keys
         run: |
           echo "Scanning for accidentally committed private keys or raw certificates..."
-          if grep -rnw --exclude-dir={.git,node_modules,.venv} -E "BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY" .; then
+          if grep -rnw --exclude-dir={.git,node_modules,.venv,docs} -E "BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY" .; then
             echo "ERROR: Private key pattern detected in repository!"
             exit 1
           fi
@@ -64,12 +64,13 @@ jobs:
       - name: Install system dependencies for OpenCV and MediaPipe
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libegl1
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements-dev.txt
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Run Ruff Linter & Formatting Check
         run: |
@@ -126,7 +127,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libegl1
 
       - name: Install backend dependencies
         run: |

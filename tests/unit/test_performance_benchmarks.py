@@ -92,6 +92,7 @@ def test_benchmark_temporal_classifier_batch_inference():
     """
     Measures temporal classification pipeline single vs batched inference throughput.
     """
+    pytest.importorskip("torch")
     from ai.classifier.temporal_inference import TemporalExerciseInferenceEngine
 
     engine = TemporalExerciseInferenceEngine(pipeline=None)
