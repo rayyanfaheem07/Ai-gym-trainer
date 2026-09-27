@@ -1,5 +1,7 @@
 from backend.app.api.deps import get_current_user
+from backend.app.core.config import settings
 from backend.app.core.database import get_db
+from backend.app.core.rate_limit import rate_limit
 from backend.app.models.user import User
 from backend.app.schemas.coach import CoachFeedbackRequest, CoachFeedbackResponse
 from backend.app.services.coach_service import CoachService
@@ -15,6 +17,7 @@ router = APIRouter()
     response_model=CoachFeedbackResponse,
     summary="Evaluate workout and provide coaching insights",
     description="Generates AI coaching insights, strengths, and form recommendations for an authenticated user's workout.",
+    dependencies=[Depends(rate_limit(settings.RATE_LIMIT_COACH_PER_MINUTE, 60.0))],
 )
 async def evaluate_workout(
     data: CoachFeedbackRequest,
@@ -36,6 +39,7 @@ async def evaluate_workout(
     response_model=CoachFeedbackResponse,
     summary="Evaluate workout session by ID",
     description="RESTful endpoint to trigger AI Coach analysis on a specific authenticated workout session.",
+    dependencies=[Depends(rate_limit(settings.RATE_LIMIT_COACH_PER_MINUTE, 60.0))],
 )
 async def evaluate_workout_session(
     session_id: str,

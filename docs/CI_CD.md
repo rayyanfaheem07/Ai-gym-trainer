@@ -19,7 +19,7 @@ The automated quality pipeline runs on GitHub Actions on every `push` and `pull_
         ┌─────────────────────┐       ┌─────────────────────┐       ┌─────────────────────┐
         │  Job 1: Security    │       │  Job 2: Backend     │       │  Job 3: Migrations  │
         │ - Secret Hygiene    │       │ - Ruff Linter       │       │ - PostgreSQL 15 Svc │
-        │ - Private Key Scan  │       │ - Pytest (280 tests)│       │ - Upgrade to head   │
+        │ - Private Key Scan  │       │ - Pytest (293 tests)│       │ - Upgrade to head   │
         │ - Dependency Audit  │       │ - Coverage (>= 80%) │       │ - Downgrade (-1)    │
         │                     │       │ - XML Artifact Upload│      │ - Re-upgrade head   │
         └─────────────────────┘       └──────────┬──────────┘       └─────────────────────┘
@@ -70,8 +70,8 @@ The automated quality pipeline runs on GitHub Actions on every `push` and `pull_
 - **Dependency Caching**: Utilizes GitHub Actions pip caching against `backend/requirements-dev.txt`.
 - **Linting & Code Style**: Runs `ruff check .` with zero allowed warnings/errors.
 - **Test Suite & Strict Coverage Gate**:
-  - Executes full test suite (280 unit, integration, and E2E tests).
-  - Enforces minimum code coverage threshold of **80%** (measured project baseline: **87%** across 5,662 statements).
+  - Executes full test suite (293 unit, integration, and E2E tests).
+  - Enforces minimum code coverage threshold of **80%** (measured project baseline: **87.25%** across backend and ai modules).
   - Command: `pytest --cov=backend/app --cov=ai --cov-report=term-missing --cov-report=xml:reports/coverage.xml --cov-fail-under=80`.
   - Emits XML coverage artifact retained for 14 days.
 

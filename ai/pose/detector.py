@@ -29,9 +29,12 @@ DEFAULT_MODEL_PATH = os.path.join(DEFAULT_MODEL_DIR, "pose_landmarker_lite.task"
 def ensure_model_asset(model_path: str = DEFAULT_MODEL_PATH, model_url: str = DEFAULT_MODEL_URL) -> str:
     """Ensures the MediaPipe pose landmarker model asset exists locally, downloading if necessary."""
     if not os.path.exists(model_path):
+        parsed = urllib.parse.urlparse(model_url)
+        if parsed.scheme != "https":
+            raise ValueError(f"Insecure scheme '{parsed.scheme}' for model asset download. Only HTTPS is permitted.")
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         logger.info(f"Downloading pose model asset to {model_path}...")
-        urllib.request.urlretrieve(model_url, model_path)
+        urllib.request.urlretrieve(model_url, model_path)  # nosec: B310
         logger.info("Pose model downloaded successfully.")
     return model_path
 

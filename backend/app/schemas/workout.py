@@ -5,10 +5,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class FormIssueCreate(BaseModel):
-    issue_code: str
+    issue_code: str = Field(max_length=64, description="Biomechanical issue code")
     severity: IssueSeverity = IssueSeverity.MODERATE
-    feedback_text: str
-    timestamp_ms: float = 0.0
+    feedback_text: str = Field(max_length=1000, description="Feedback message for athlete")
+    timestamp_ms: float = Field(default=0.0, ge=0.0)
 
 
 class FormIssueResponse(BaseModel):
@@ -23,14 +23,14 @@ class FormIssueResponse(BaseModel):
 
 
 class ExerciseResultCreate(BaseModel):
-    rep_number: int
-    is_valid: int = 1
+    rep_number: int = Field(ge=1, le=10000)
+    is_valid: int = Field(default=1, ge=0, le=1)
     form_score: float = Field(default=100.0, ge=0.0, le=100.0)
-    duration_sec: float = Field(default=0.0, ge=0.0)
-    eccentric_duration_sec: float = Field(default=0.0, ge=0.0)
-    concentric_duration_sec: float = Field(default=0.0, ge=0.0)
-    min_joint_angle: float | None = None
-    max_joint_angle: float | None = None
+    duration_sec: float = Field(default=0.0, ge=0.0, le=86400.0)
+    eccentric_duration_sec: float = Field(default=0.0, ge=0.0, le=86400.0)
+    concentric_duration_sec: float = Field(default=0.0, ge=0.0, le=86400.0)
+    min_joint_angle: float | None = Field(default=None, ge=0.0, le=360.0)
+    max_joint_angle: float | None = Field(default=None, ge=0.0, le=360.0)
     faults_detected: list[str] = Field(default_factory=list)
     form_issues: list[FormIssueCreate] = Field(default_factory=list)
 
@@ -58,16 +58,16 @@ RepRecordResponse = ExerciseResultResponse
 
 
 class ExerciseSessionCreate(BaseModel):
-    exercise_name: str | None = None
-    exercise_type: str | None = None
-    session_order: int = 1
-    set_number: int | None = None
-    target_reps: int | None = None
-    completed_reps: int = Field(default=0, ge=0)
-    valid_reps: int = Field(default=0, ge=0)
-    invalid_reps: int = Field(default=0, ge=0)
+    exercise_name: str | None = Field(default=None, max_length=64)
+    exercise_type: str | None = Field(default=None, max_length=64)
+    session_order: int = Field(default=1, ge=1, le=1000)
+    set_number: int | None = Field(default=None, ge=1, le=1000)
+    target_reps: int | None = Field(default=None, ge=1, le=10000)
+    completed_reps: int = Field(default=0, ge=0, le=10000)
+    valid_reps: int = Field(default=0, ge=0, le=10000)
+    invalid_reps: int = Field(default=0, ge=0, le=10000)
     average_form_score: float = Field(default=0.0, ge=0.0, le=100.0)
-    average_tempo_sec: float = Field(default=0.0, ge=0.0)
+    average_tempo_sec: float = Field(default=0.0, ge=0.0, le=3600.0)
     results: list[ExerciseResultCreate] = Field(default_factory=list)
     reps: list[RepRecordCreate] = Field(default_factory=list)
 
@@ -103,14 +103,14 @@ ExerciseSetResponse = ExerciseSessionResponse
 
 
 class WorkoutStartRequest(BaseModel):
-    user_id: str | None = None
-    notes: str | None = None
+    user_id: str | None = Field(default=None, max_length=64)
+    notes: str | None = Field(default=None, max_length=2000)
 
 
 class WorkoutFinishRequest(BaseModel):
-    notes: str | None = None
-    total_duration_sec: float | None = Field(default=None, ge=0.0)
-    total_calories: float | None = Field(default=None, ge=0.0)
+    notes: str | None = Field(default=None, max_length=2000)
+    total_duration_sec: float | None = Field(default=None, ge=0.0, le=86400.0)
+    total_calories: float | None = Field(default=None, ge=0.0, le=50000.0)
     overall_form_score: float | None = Field(default=None, ge=0.0, le=100.0)
 
 

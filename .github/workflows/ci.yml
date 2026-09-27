@@ -75,6 +75,10 @@ jobs:
         run: |
           ruff check .
 
+      - name: Run Bandit Static Security Scan
+        run: |
+          bandit -r backend/ ai/ -ll
+
       - name: Run Pytest with Coverage Gate (>= 80%)
         run: |
           mkdir -p reports

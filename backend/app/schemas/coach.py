@@ -74,8 +74,8 @@ class CoachStructuredOutput(BaseModel):
 
 
 class CoachFeedbackRequest(BaseModel):
-    session_id: str
-    target_focus: str | None = "form_improvement"
+    session_id: str = Field(max_length=64, description="Target workout session identifier")
+    target_focus: str | None = Field(default="form_improvement", max_length=64, description="Primary focus area for the coaching assessment")
 
 
 class CoachFeedbackResponse(BaseModel):

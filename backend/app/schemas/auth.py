@@ -5,8 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class UserRegister(BaseModel):
-    email: str = Field(description="User email address")
-    password: str = Field(min_length=8, description="User password (minimum 8 characters)")
+    email: str = Field(max_length=255, description="User email address")
+    password: str = Field(min_length=8, max_length=128, description="User password (minimum 8, maximum 128 characters)")
     full_name: str | None = Field(default=None, max_length=255, description="Optional full name")
 
     @field_validator("email", mode="before")
@@ -15,6 +15,8 @@ class UserRegister(BaseModel):
         if not isinstance(v, str) or not v.strip():
             raise ValueError("Email cannot be empty.")
         clean = v.strip().lower()
+        if len(clean) > 255:
+            raise ValueError("Email exceeds maximum allowed length of 255 characters.")
         email_regex = r"^[\w\.\+\-]+@[\w\-]+\.[a-zA-Z]{2,}$"
         if not re.match(email_regex, clean):
             raise ValueError("Invalid email address format.")
@@ -25,6 +27,8 @@ class UserRegister(BaseModel):
     def validate_password_strength(cls, v: str) -> str:
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters long.")
+        if len(v) > 128:
+            raise ValueError("Password exceeds maximum allowed length of 128 characters.")
         if v.isdigit():
             raise ValueError("Password cannot consist solely of digits.")
         if v.isalpha():
@@ -33,14 +37,17 @@ class UserRegister(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: str = Field(description="Registered email address")
-    password: str = Field(description="Account password")
+    email: str = Field(max_length=255, description="Registered email address")
+    password: str = Field(max_length=128, description="Account password")
 
     @field_validator("email", mode="before")
     @classmethod
     def normalize_email(cls, v: str) -> str:
         if isinstance(v, str):
-            return v.strip().lower()
+            clean = v.strip().lower()
+            if len(clean) > 255:
+                raise ValueError("Email exceeds maximum allowed length of 255 characters.")
+            return clean
         return v
 
 
