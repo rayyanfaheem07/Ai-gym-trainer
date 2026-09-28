@@ -64,7 +64,24 @@ jobs:
       - name: Install system dependencies for OpenCV and MediaPipe
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libegl1 libgles2
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libegl1 libgles2 libgles2-mesa-dev
+          sudo ldconfig
+          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}" >> $GITHUB_ENV
+
+      - name: Verify dynamic libraries for MediaPipe
+        run: |
+          echo "=== 1. dpkg -s libgles2 ==="
+          dpkg -s libgles2
+          echo "=== 2. dpkg -L libgles2 ==="
+          dpkg -L libgles2
+          echo "=== 3. ls -l /usr/lib/x86_64-linux-gnu/libGLESv2.so.2 ==="
+          ls -l /usr/lib/x86_64-linux-gnu/libGLESv2.so.2*
+          echo "=== 4. ldconfig -p | grep GLESv2 ==="
+          ldconfig -p | grep GLESv2 || true
+          echo "=== 5. ldd /usr/lib/x86_64-linux-gnu/libGLESv2.so.2 ==="
+          ldd /usr/lib/x86_64-linux-gnu/libGLESv2.so.2
+          echo "=== 6. Python ctypes verification ==="
+          python3 -c "import ctypes; print('ctypes.CDLL libGLESv2.so.2:', ctypes.CDLL('libGLESv2.so.2'))"
 
       - name: Install Python dependencies
         run: |
@@ -127,7 +144,9 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libegl1 libgles2
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libegl1 libgles2 libgles2-mesa-dev
+          sudo ldconfig
+          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}" >> $GITHUB_ENV
 
       - name: Install backend dependencies
         run: |
