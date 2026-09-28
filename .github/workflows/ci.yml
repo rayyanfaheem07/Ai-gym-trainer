@@ -231,6 +231,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Generate CI-only JWT secret
+        run: echo "JWT_SECRET_KEY=$(openssl rand -hex 32)" >> $GITHUB_ENV
+
       - name: Validate Docker Compose Configuration Syntax
         run: |
           docker compose config --quiet
@@ -274,6 +277,13 @@ jobs:
 
           echo "Verifying frontend HTTP response..."
           curl -s -f -I http://localhost:3000/ || { echo "Frontend HTTP probe failed"; exit 1; }
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color backend --tail=200
+          docker inspect ai_gym_backend --format='{{json .State.Health}}'
 
       - name: Stop and cleanup Compose services
         if: always()
