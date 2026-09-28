@@ -97,20 +97,62 @@ The test files `test_ml_robustness.py` and `test_ml_temporal.py` correctly use `
 
 ## 6. Frontend CI Fix
 
-**Analysis**: The CI report indicated "27 tests, 26 passed, 1 failed" but did not include the specific failing test name or assertion.
+### SECOND-PASS FRONTEND — Root Cause Analysis
 
-**Investigation findings**:
-- All **33** frontend tests pass locally (Windows, Node.js 20).
-- The frontend test count locally (33) differs from the CI report (27), indicating the CI run occurred on an older commit that predated 6 newer tests added in the `feature/phase-13-ai-coach` branch.
-- All test files use deterministic, environment-independent logic (pure data transformations, state machines, JSON parsing, validation). No tests depend on timing, network, filesystem, or browser APIs.
-- `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` all pass cleanly.
+**Exact CI Error**:
+```
+Error: Cannot find module '../lib/auth'
+Require stack:
+- /home/runner/work/Ai-gym-trainer/Ai-gym-trainer/frontend/src/__tests__/auth_and_websocket.test.ts
+```
 
-**Conclusion**: The 1 frontend test failure was almost certainly caused by one of:
-1. A transient CI environment issue (Node.js test runner flake with `tsx --test`).
-2. A test that was subsequently fixed in a later commit on the branch.
-3. A race condition in the CI test runner that does not reproduce deterministically.
+**Root Cause**: The root-level `.gitignore` contained the unanchored pattern `lib/` on line 13 (a standard Python packaging ignore). Because gitignore patterns without a leading `/` match **any directory with that name at any depth**, this rule silently excluded the entire `frontend/src/lib/` directory from git tracking. The three files affected were:
 
-**Action**: No frontend code changes made. The current test suite passes reliably and no test weakening was necessary. The CI workflow's frontend job configuration is correct.
+| File | Purpose |
+|------|---------|
+| `frontend/src/lib/auth.ts` | Client-side JWT token storage/retrieval/expiry helpers |
+| `frontend/src/lib/api.ts` | Typed API client (auth, workouts, analytics, coach endpoints) |
+| `frontend/src/lib/poseDetector.ts` | MediaPipe Pose landmark extraction abstraction |
+
+These files existed on disk (created during development) and were imported by both tests (`auth_and_websocket.test.ts`) and production code (`authStore.ts`, components). However, `git status` showed "working tree clean" because `.gitignore` suppressed them — they were invisible to git.
+
+**Why it passed locally on Windows but failed on Linux CI**:
+- **Windows (local)**: The files exist on disk. Node.js resolves `../lib/auth` by finding the physical file `frontend/src/lib/auth.ts`. Windows doesn't care that git doesn't track them — the test runner sees real files.
+- **Linux (CI)**: GitHub Actions checks out only git-tracked files. Since `frontend/src/lib/` was gitignored, the checkout on `ubuntu-latest` never received `auth.ts`, `api.ts`, or `poseDetector.ts`. The test's `require('../lib/auth')` fails with `Cannot find module`.
+
+This is **not** a filename casing issue. It is a `.gitignore` over-matching issue.
+
+**Affected File**: `.gitignore` line 13
+
+**Exact Fix**:
+```diff
+-.gitignore line 13-14:
+-lib/
+-lib64/
++/lib/
++/lib64/
+```
+
+Anchoring both patterns with a leading `/` restricts them to the repository root only. No root-level `lib/` or `lib64/` directory exists in this project, so the patterns remain correct for their original Python packaging intent while no longer matching `frontend/src/lib/`.
+
+After fixing `.gitignore`, the three files were force-added to git tracking:
+```
+git add -f frontend/src/lib/auth.ts frontend/src/lib/api.ts frontend/src/lib/poseDetector.ts
+```
+
+**Verification Results (Second Pass)**:
+
+| Check | Result |
+|-------|--------|
+| `npm test` | 33 passed, 0 failed ✅ |
+| `npm run typecheck` | No errors ✅ |
+| `npm run lint` | No ESLint warnings or errors ✅ |
+| `npm run build` | Compiled successfully, 10/10 static pages ✅ |
+| `pytest -q` (venv) | 304 passed, 0 failed ✅ |
+| `pytest --cov=backend/app --cov=ai --cov-fail-under=80` | 87.25% (≥80%) ✅ |
+| `ruff check .` | All checks passed ✅ |
+| `git diff --check` | No whitespace errors ✅ |
+| Security scan (`test_security_scan.py`) | 11 passed ✅ |
 
 ## 7. Coverage Verification
 
