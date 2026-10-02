@@ -10,6 +10,7 @@ from backend.app.core.security_headers import SecurityHeadersMiddleware
 from backend.app.schemas.health import HealthResponse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 # Configure structured logging
 log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
@@ -79,6 +80,15 @@ def create_application() -> FastAPI:
         tags=["Health"],
         summary="Root Health Check",
     )
+
+    # Root redirects for interactive documentation
+    @app.get("/docs", include_in_schema=False)
+    async def docs_redirect():
+        return RedirectResponse(url=f"{settings.API_V1_STR}/docs")
+
+    @app.get("/redoc", include_in_schema=False)
+    async def redoc_redirect():
+        return RedirectResponse(url=f"{settings.API_V1_STR}/redoc")
 
     return app
 

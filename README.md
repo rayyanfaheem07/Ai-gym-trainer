@@ -26,7 +26,7 @@ On the server, a deterministic Finite State Machine (FSM) coupled with geometric
 - **Personalized Fitness Profiling**: Captures experience level, fitness goals, and coaching styles to tailor post-workout feedback.
 - **Local AI Coach with Ollama**: Generates structured post-workout feedback using local `llama3.2`, constrained by strict system prompt guardrails and fact-checking against recorded database metrics.
 - **Containerized Deployment**: Multi-stage Dockerfiles and Docker Compose orchestrating frontend, backend, PostgreSQL, and Ollama.
-- **Automated Testing & CI/CD**: 293 backend tests (pytest) with >=80% coverage enforcement, 33 frontend tests, Ruff linting, ESLint, TypeScript typechecks, and GitHub Actions CI.
+- **Automated Testing & CI/CD**: 306 backend tests (pytest) with >=80% coverage enforcement, 33 frontend tests, Ruff linting, ESLint, TypeScript typechecks, and GitHub Actions CI.
 - **Security Hardening**: Sliding-window rate limiting on sensitive routes, browser security headers middleware, non-root container users, and loopback port bindings.
 
 ---
@@ -173,17 +173,19 @@ ai-gym-trainer/
 │   ├── exercises/                 # Exercise state machines (Squat, Pushup, Curl, Lunge, Press)
 │   ├── pose/                      # MediaPipe pose detector & landmark parser
 │   └── tracker/                   # Angle calculators & filtering
+├── alembic/                       # Database migration scripts (001 to 004)
+│   └── versions/                  # Migration revision files
 ├── backend/                       # FastAPI backend
-│   ├── alembic/                   # Database migration scripts (001 to 004)
-│   │   └── versions/              # Migration revision files
 │   ├── app/
 │   │   ├── api/v1/                # Route handlers (auth, workouts, coach, ws, profile, etc.)
 │   │   ├── core/                  # Config, database setup, rate limiter, security
 │   │   ├── models/                # SQLAlchemy ORM entities (User, Workout, ExerciseSession)
 │   │   ├── repositories/          # Database query repositories
 │   │   ├── schemas/               # Pydantic v2 request/response schemas
-│   │   └── services/              # Domain logic (Auth, Coach, Personalization, Workout, WS)
-│   └── main.py                    # ASGI application entrypoint
+│   │   ├── services/              # Domain logic (Auth, Coach, Personalization, Workout, WS)
+│   │   └── main.py                # ASGI application entrypoint
+│   ├── requirements.txt           # Production backend dependencies
+│   └── requirements-dev.txt       # Development & test dependencies
 ├── docker/                        # Production Dockerfiles (backend.Dockerfile, frontend.Dockerfile)
 ├── docs/                          # Comprehensive technical documentation
 │   ├── diagrams/                  # Mermaid architecture diagrams
@@ -244,14 +246,14 @@ ai-gym-trainer/
    source .venv/bin/activate
 
    # Install dependencies
-   pip install -r requirements.txt
-   pip install -r requirements-dev.txt
+   pip install -r backend/requirements.txt
+   pip install -r backend/requirements-dev.txt
 
    # Run database migrations
    alembic upgrade head
 
    # Start backend development server
-   uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+   uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
    ```
 
 4. **Frontend setup**:
@@ -287,7 +289,7 @@ docker compose logs -f backend
 ```
 
 - **Frontend Web UI**: [http://localhost:3000](http://localhost:3000)
-- **FastAPI Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **FastAPI Swagger Docs**: [http://localhost:8000/api/v1/docs](http://localhost:8000/api/v1/docs) (or [http://localhost:8000/docs](http://localhost:8000/docs))
 - **Health Check Endpoint**: [http://localhost:8000/health](http://localhost:8000/health)
 
 ---
@@ -343,7 +345,7 @@ Comprehensive API documentation is available in [docs/API.md](docs/API.md).
 
 ### Backend Tests & Verification
 ```bash
-# Run complete test suite (293 tests)
+# Run complete test suite (306 tests)
 pytest
 
 # Run with test coverage enforcement (>=80%)
@@ -356,7 +358,7 @@ ruff check .
 bandit -r backend ai -ll -ii
 
 # Run dependency vulnerability audit
-pip-audit -r requirements.txt
+pip-audit -r backend/requirements.txt
 ```
 
 ### Frontend Tests & Verification

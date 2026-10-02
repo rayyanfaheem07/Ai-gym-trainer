@@ -16,16 +16,19 @@ ai-gym-trainer/
 │   ├── exercises/                 # Exercise state machines (squat, pushup, curl, lunge, press)
 │   ├── pose/                      # MediaPipe pose detector & landmark parser
 │   └── tracker/                   # Biomechanical angle calculators & metrics
+├── alembic/                       # Database migrations (001 to 004)
+│   └── versions/                  # Migration revision files
 ├── backend/                       # FastAPI backend
-│   ├── alembic/                   # Database migrations (001 to 004)
 │   ├── app/
 │   │   ├── api/v1/                # API route handlers (auth, workouts, coach, ws, profile, etc.)
 │   │   ├── core/                  # Configuration, database engine, rate limiting, security
 │   │   ├── models/                # SQLAlchemy ORM models (User, Workout, ExerciseSession, etc.)
 │   │   ├── repositories/          # Database query repositories
 │   │   ├── schemas/               # Pydantic v2 validation DTOs
-│   │   └── services/              # Domain business services (Auth, Coach, Personalization, etc.)
-│   └── main.py                    # ASGI application entrypoint & middleware setup
+│   │   ├── services/              # Domain business services (Auth, Coach, Personalization, etc.)
+│   │   └── main.py                # ASGI application entrypoint & middleware setup
+│   ├── requirements.txt           # Production backend dependencies
+│   └── requirements-dev.txt       # Development & test dependencies
 ├── docker/                        # Production Dockerfiles (backend.Dockerfile, frontend.Dockerfile)
 ├── docs/                          # Architecture, API, and development documentation
 │   └── diagrams/                  # Mermaid architecture flow diagrams
@@ -61,8 +64,8 @@ ai-gym-trainer/
    ```
 2. Install Python dependencies:
    ```bash
-   pip install -r requirements.txt
-   pip install -r requirements-dev.txt
+   pip install -r backend/requirements.txt
+   pip install -r backend/requirements-dev.txt
    ```
 3. Configure environment variables:
    ```bash
@@ -75,7 +78,7 @@ ai-gym-trainer/
    ```
 5. Start the backend development server:
    ```bash
-   uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+   uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
    ```
 
 ### Frontend Setup
@@ -103,7 +106,7 @@ Database schema changes must be managed via Alembic:
 ```bash
 alembic revision --autogenerate -m "describe_schema_change"
 ```
-Always inspect the generated file in `backend/alembic/versions/` to verify that both `upgrade()` and `downgrade()` handle dialect differences cleanly.
+Always inspect the generated file in `alembic/versions/` to verify that both `upgrade()` and `downgrade()` handle dialect differences cleanly.
 
 ### Applying Migrations
 ```bash
@@ -140,14 +143,14 @@ ruff check .
 bandit -r backend ai -ll -ii
 
 # Known vulnerability scan
-pip-audit -r requirements.txt
+pip-audit -r backend/requirements.txt
 ```
 
 ### Running Frontend Tests & Checks
 ```bash
 cd frontend
 
-# Run Jest unit tests
+# Run frontend unit & integration tests (Node.js test runner via tsx)
 npm test
 
 # Run TypeScript typecheck
