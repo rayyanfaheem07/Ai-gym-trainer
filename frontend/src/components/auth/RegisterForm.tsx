@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
@@ -9,6 +9,11 @@ import { UserPlus, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 export const RegisterForm: React.FC = () => {
   const router = useRouter();
   const { register, isLoading, error, clearError } = useAuthStore();
+  const initialize = useAuthStore((state) => state.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
