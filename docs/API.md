@@ -2,9 +2,12 @@
 
 FastAPI production backend architecture implementing a 4-tier layer (API $\rightarrow$ Service $\rightarrow$ AI/CV $\rightarrow$ Repository/Database) with secure JWT Bearer authentication, role/ownership enforcement, Pydantic v2 schemas, and PostgreSQL/SQLite with Alembic migrations.
 
-## Base URLs
+## Base URLs & Interactive Documentation
 - **REST Base URL**: `http://localhost:8000/api/v1` (Docker: `http://ai_gym_backend:8000/api/v1`)
 - **WebSocket URL**: `ws://localhost:8000/api/v1/ws/stream?token=<JWT>`
+- **Swagger UI**: `http://localhost:8000/api/v1/docs` (or redirected from `http://localhost:8000/docs`)
+- **ReDoc UI**: `http://localhost:8000/api/v1/redoc` (or redirected from `http://localhost:8000/redoc`)
+- **Health Check**: `http://localhost:8000/health` (or `http://localhost:8000/api/v1/health`)
 
 ## Authentication & Security
 - **Bearer Token**: All protected endpoints require an `Authorization: Bearer <access_token>` header.
