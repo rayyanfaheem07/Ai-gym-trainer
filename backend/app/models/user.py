@@ -21,6 +21,12 @@ class User(Base, TimestampMixin):
         cascade="all, delete-orphan",
         order_by="desc(Workout.created_at)",
     )
+    profile = relationship(
+        "UserProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     # Backward compatibility property
     @property

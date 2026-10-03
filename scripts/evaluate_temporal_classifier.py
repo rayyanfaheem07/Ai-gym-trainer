@@ -15,7 +15,6 @@ import numpy as np
 from ai.classifier.dataset import GroupAwareDatasetSplitter
 from ai.classifier.evaluator import ModelEvaluator
 from ai.classifier.pipeline import ExerciseClassificationPipeline
-from ai.classifier.preprocessor import DataPreprocessor
 from ai.classifier.temporal_evaluator import TemporalModelEvaluator
 from ai.classifier.temporal_pipeline import TemporalClassificationPipeline
 

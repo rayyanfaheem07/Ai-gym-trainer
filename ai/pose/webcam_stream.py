@@ -178,8 +178,8 @@ class WebcamPoseTracker:
         self.detector.close()
         try:
             cv2.destroyAllWindows()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"OpenCV window cleanup ignored: {e}")
         logger.info("Camera and detector resources released.")
 
 

@@ -128,7 +128,8 @@ class GroupAwareDatasetSplitter:
             feature_names=dataset.feature_names,
         )
 
-        assert splits.verify_no_leakage(), "Data leakage assertion failed in group splitting."
+        if not splits.verify_no_leakage():
+            raise ValueError("Data leakage assertion failed in group splitting.")
         logger.info(
             f"Dataset split completed without leakage: Train={len(splits.X_train)} samples ({len(set(splits.groups_train))} groups), "
             f"Val={len(splits.X_val)} samples ({len(set(splits.groups_val))} groups), "

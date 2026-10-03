@@ -17,5 +17,6 @@ async def health_check() -> HealthResponse:
         version=settings.VERSION,
         environment=settings.ENVIRONMENT,
         database_connected=db_ok,
+        database_status="connected" if db_ok else "unavailable",
         ai_engine_ready=ai_ok,
     )

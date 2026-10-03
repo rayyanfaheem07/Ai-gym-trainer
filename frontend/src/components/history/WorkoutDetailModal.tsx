@@ -33,6 +33,7 @@ export const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [coachFeedback, setCoachFeedback] = useState<CoachingFeedback | null>(null);
   const [evaluatingCoach, setEvaluatingCoach] = useState(false);
+  const [coachError, setCoachError] = useState<string | null>(null);
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -60,10 +61,11 @@ export const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({
   const handleConsultCoach = async () => {
     try {
       setEvaluatingCoach(true);
+      setCoachError(null);
       const res = await coachApi.evaluate(workoutId);
       setCoachFeedback(res);
     } catch (err: any) {
-      alert(`AI Coach evaluation error: ${err.message || "Failed to connect to local Ollama LLM"}`);
+      setCoachError(err.message || "Failed to connect to AI Coach service.");
     } finally {
       setEvaluatingCoach(false);
     }
@@ -290,6 +292,13 @@ export const WorkoutDetailModal: React.FC<WorkoutDetailModalProps> = ({
                   )}
                 </button>
               </div>
+
+              {coachError && (
+                <div className="p-3.5 rounded-2xl bg-rose-950/20 border border-rose-900/30 text-xs text-rose-400 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{coachError}</span>
+                </div>
+              )}
 
               {coachFeedback ? (
                 <CoachFeedbackCard feedback={coachFeedback} />

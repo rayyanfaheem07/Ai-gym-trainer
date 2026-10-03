@@ -1,13 +1,15 @@
 """Initial schema creation for Phase 8
 
 Revision ID: 001_initial_schema
-Revises: 
+Revises:
 Create Date: 2026-09-10 10:00:00.000000
 
 """
 from typing import Sequence, Union
-from alembic import op
+
 import sqlalchemy as sa
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '001_initial_schema'

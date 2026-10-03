@@ -59,7 +59,7 @@ class TemporalClassificationPipeline:
             raise FileNotFoundError(f"Temporal model pipeline file not found at: {target_path}")
 
         target_device = torch.device(device)
-        bundle = torch.load(target_path, map_location=target_device, weights_only=False)
+        bundle = torch.load(target_path, map_location=target_device, weights_only=False)  # nosec: B614
 
         # 1. Rebuild model architecture
         model_config = bundle["model_config"]

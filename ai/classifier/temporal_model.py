@@ -41,7 +41,7 @@ class TemporalAttention(nn.Module):
 class PoseSequenceClassifier(nn.Module):
     """
     Lightweight, real-time temporal deep learning classifier for exercise recognition.
-    
+
     Supports LSTM and GRU recurrent architectures with self-attention temporal pooling,
     batch normalization, dropout regularization, and linear classification head.
 

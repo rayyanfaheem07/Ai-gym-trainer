@@ -6,9 +6,11 @@ from backend.app.api.v1.router import api_router
 from backend.app.core.config import settings
 from backend.app.core.database import init_db
 from backend.app.core.errors import register_exception_handlers
+from backend.app.core.security_headers import SecurityHeadersMiddleware
 from backend.app.schemas.health import HealthResponse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 # Configure structured logging
 log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
@@ -22,6 +24,9 @@ logger = logging.getLogger("ai_gym_backend")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan event handler for startup and shutdown tasks."""
+    # Enforce production security constraints at startup
+    settings.validate_production_security()
+
     logger.info(f"Starting {settings.PROJECT_NAME} (v{settings.VERSION}) in [{settings.ENVIRONMENT}] mode...")
     # Initialize DB schema for dev / sqlite environment
     if settings.ENVIRONMENT == "development" and "sqlite" in settings.DATABASE_URL:
@@ -49,14 +54,18 @@ def create_application() -> FastAPI:
     # Register standardized exception handlers
     register_exception_handlers(app)
 
-    # CORS configuration
+    # Register HTTP security headers middleware
+    app.add_middleware(SecurityHeadersMiddleware)
+
+    # CORS configuration with least-privilege methods and headers
     if settings.CORS_ORIGINS:
+        allowed_origins = [str(origin) for origin in settings.CORS_ORIGINS]
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=[str(origin) for origin in settings.CORS_ORIGINS],
+            allow_origins=allowed_origins,
             allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
         )
 
     # Mount API routers
@@ -71,6 +80,15 @@ def create_application() -> FastAPI:
         tags=["Health"],
         summary="Root Health Check",
     )
+
+    # Root redirects for interactive documentation
+    @app.get("/docs", include_in_schema=False)
+    async def docs_redirect():
+        return RedirectResponse(url=f"{settings.API_V1_STR}/docs")
+
+    @app.get("/redoc", include_in_schema=False)
+    async def redoc_redirect():
+        return RedirectResponse(url=f"{settings.API_V1_STR}/redoc")
 
     return app
 

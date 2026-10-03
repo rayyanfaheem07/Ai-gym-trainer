@@ -120,3 +120,12 @@ async def authenticated_async_client(
     async with AsyncClient(transport=transport, base_url="http://test", headers=auth_headers) as client:
         yield client
 
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset the sliding window rate limiter state between tests to maintain test isolation."""
+    from backend.app.core.rate_limit import limiter
+    limiter.reset()
+    yield
+    limiter.reset()
+
